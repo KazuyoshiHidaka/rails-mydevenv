@@ -1,0 +1,40 @@
+version: "3"
+volumes:
+  mysql_8_0-data:
+  app:
+  bundle:
+  node_modules:
+  config:
+
+services:
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    volumes:
+      - mysql_8_0-data:/var/lib/mysql
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "35729:35729"
+    environment:
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: password
+      MYSQL_HOST: mysql
+      # YOUTUBE_API_KEY: <please set in .env>
+    env_file: .env
+    depends_on:
+      - mysql
+    volumes:
+      - app:/app
+      - bundle:/usr/local/bundle
+      - node_modules:/app/node_modules
+      - config:/root
+    tty: true
+    stdin_open: true
+    command: bash
