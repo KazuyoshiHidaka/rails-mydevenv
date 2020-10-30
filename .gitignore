@@ -35,4 +35,11 @@
 yarn-debug.log*
 .yarn-integrity
 
+/.cache
+/.ssh
+/.vscode-server
+/.gitconfig
+/.bash_history
+/.local
+
 .env
