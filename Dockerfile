@@ -2,7 +2,7 @@ FROM ruby:2.7.1
 
 ENV ENTRYKIT_VERSION 0.4.0
 
-WORKDIR /app
+WORKDIR /root
 
 RUN wget https://github.com/progrium/entrykit/releases/download/v${ENTRYKIT_VERSION}/entrykit_${ENTRYKIT_VERSION}_Linux_x86_64.tgz \
   && tar -xvzf entrykit_${ENTRYKIT_VERSION}_Linux_x86_64.tgz \
