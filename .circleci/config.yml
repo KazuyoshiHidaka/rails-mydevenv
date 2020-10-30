@@ -1,0 +1,87 @@
+version: 2.1
+
+orbs:
+  ruby: circleci/ruby@1.0
+  node: circleci/node@2
+  browser-tools: circleci/browser-tools@1.0.1
+  jq: circleci/jq@2.2.0
+  build-tools: circleci/build-tools@2.6.6
+
+jobs:
+  test:
+    parallelism: 3
+    docker:
+      - image: cimg/ruby:2.7.1-node
+        environment:
+          BUNDLE_JOBS: "3"
+          BUNDLE_RETRY: "3"
+          BUNDLE_PATH: vendor/bundle
+          DATABASE_URL: "mysql2://root:password@127.0.0.1/circle_test"
+          RAILS_ENV: test
+      - image: circleci/mysql:8
+        command: --default-authentication-plugin=mysql_native_password
+        environment:
+          MYSQL_ROOT_PASSWORD: password
+    steps:
+      - checkout
+      - ruby/install-deps
+      - node/install-packages:
+          pkg-manager: yarn
+          cache-key: "yarn.lock"
+
+      - browser-tools/install-chrome
+      - browser-tools/install-chromedriver
+
+      - run:
+          name: Wait for DB
+          command: dockerize -wait tcp://localhost:3306 -timeout 1m
+      - run:
+          name: Database setup
+          command: bundle exec rails db:schema:load --trace
+      # Run rspec in parallel
+      - ruby/rspec-test
+      - run:
+          name: run rubocop checking
+          command: bundle exec rubocop
+
+  heroku_deploy:
+    docker:
+      - image: sue445/heroku-cli
+    steps:
+      - checkout
+      - build-tools/install-ci-tools
+      - jq/install
+      - run:
+          name: Define HEROKU_APP_NAME
+          command: echo "export HEROKU_APP_NAME=hk-${APP_NAME}-${CIRCLE_BRANCH//_/-}" >> $BASH_ENV
+      - run:
+          name: Set Heroku app
+          command: |
+            if [ ! `heroku apps --json | jq ".[].name | select(. == \"$HEROKU_APP_NAME\")"` ]; then
+              heroku apps:create $HEROKU_APP_NAME \
+              --addons jawsdb:kitefin,memcachedcloud; 
+            else
+              heroku git:remote $HEROKU_APP_NAME;
+            fi
+      - run:
+          name: Set Environment Variables
+          command: |
+            JAWSDB_URL=`heroku config:get JAWSDB_URL`; heroku config:set \
+            APP_NAME=${APP_NAME} \
+            DATABASE_URL=${JAWSDB_URL/mysql/mysql2}
+      - run:
+          name: Deploy
+          command: git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git master
+      - run:
+          name: Run post-deploy tasks
+          command: |
+            heroku run bundle exec rails db:migrate
+            heroku run bundle exec rails db:seed
+workflows:
+  version: 2.1
+  build:
+    jobs:
+      - test
+      - heroku_deploy:
+          requires:
+            - test
