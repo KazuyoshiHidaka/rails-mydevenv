@@ -21,10 +21,10 @@ services:
       - "3001:3001"
       - "35729:35729"
     environment:
+      APP_NAME: rails-mydevenv
       MYSQL_USERNAME: root
       MYSQL_PASSWORD: password
       MYSQL_HOST: mysql
-      # YOUTUBE_API_KEY: <please set in .env>
     env_file: .env
     depends_on:
       - mysql
