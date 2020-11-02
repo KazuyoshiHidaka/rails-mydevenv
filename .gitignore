@@ -43,5 +43,3 @@ yarn-debug.log*
 .local
 .profile
 .wget-hsts
-
-.env
